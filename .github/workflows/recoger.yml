@@ -1,0 +1,49 @@
+name: Recoger graficos
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: recoger
+  cancel-in-progress: false
+jobs:
+  recoger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Traer archivos nuevos
+        env:
+          API: https://script.google.com/macros/s/AKfycbz5qoRWKPVEEuVC6FU-FdAxx1wiGLf6jhzbzViBtMuMXyASXr0RdsWSFwbQViIuDXGB/exec
+        run: python3 .github/scripts/recoger.py
+      - name: Guardar en git
+        id: git
+        run: |
+          git config user.name "Chizpita"
+          git config user.email "noreply@chizpita.com"
+          git add grafico-* 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "Grafico nuevo"
+            git push
+            echo "publicar=true" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "publicar=true" >> "$GITHUB_OUTPUT"
+          elif [ "$(git log -1 --format=%ct)" -lt "$(( $(date +%s) - 30*86400 ))" ]; then
+            # GitHub apaga los horarios tras 60 dias sin actividad
+            git commit --allow-empty -m "Sigue activo"
+            git push
+          fi
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.git.outputs.publicar == 'true'
+        with:
+          path: .
+      - uses: actions/deploy-pages@v4
+        if: steps.git.outputs.publicar == 'true'
