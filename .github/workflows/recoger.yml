@@ -23,13 +23,15 @@ jobs:
       - name: Traer archivos nuevos
         env:
           API: https://script.google.com/macros/s/AKfycbz5qoRWKPVEEuVC6FU-FdAxx1wiGLf6jhzbzViBtMuMXyASXr0RdsWSFwbQViIuDXGB/exec
-        run: python3 .github/scripts/recoger.py
+        run: |
+          pip install --quiet pillow
+          python3 .github/scripts/recoger.py
       - name: Guardar en git
         id: git
         run: |
           git config user.name "Chizpita"
           git config user.email "noreply@chizpita.com"
-          git add grafico-* 2>/dev/null || true
+          git add grafico-* portada.jpg portada.txt 2>/dev/null || true
           if ! git diff --cached --quiet; then
             git commit -m "Grafico nuevo"
             git push
